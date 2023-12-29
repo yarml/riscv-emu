@@ -1,18 +1,23 @@
 use cpu::Hart;
 use dev::{ReadMode, WriteMode};
 use ram::RAM;
+use rom::ROM;
 
+mod bus;
 mod cpu;
 mod dev;
-mod bus;
+mod ram;
+mod rom;
 mod units;
 mod utils;
-mod ram;
 
 pub fn shutup_unused() {
   let ram = RAM::new(16 * 1024 * 1024);
+  let firmware =
+    ROM::from_file("firmware.bin", true).expect("Could not load formware");
   let mut hart = Hart::new();
   hart.bus.attach_dev(Box::new(ram));
+  hart.bus.attach_dev(Box::new(firmware));
 
   hart.reg_write(2, 4);
   hart.reg_read(2);

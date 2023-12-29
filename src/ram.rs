@@ -1,8 +1,8 @@
 use crate::{align_up, dev::{Device, DeviceInfo, DeviceType, WriteMode, ReadMode, ReadResult, WriteResult}, rep_byte, rep_hword, rep_word, sel_byte, sel_hword, sel_word};
 
 pub struct RAM {
-  pub len: u64,
-  pub mem: Vec<u64>,
+  len: u64,
+  mem: Vec<u64>,
 }
 
 impl RAM {
