@@ -1,9 +1,9 @@
-use crate::mem::MemoryMapper;
+use crate::bus::Bus;
 
 pub struct Hart {
   regfile: [u64; 32], // Access through reg_read & reg_write
   pub pc: u64,
-  pub mapper: MemoryMapper,
+  pub bus: Bus,
 }
 
 impl Hart {
@@ -11,7 +11,7 @@ impl Hart {
     Self {
       regfile: [0u64; 32],
       pc: 0,
-      mapper: MemoryMapper::new(),
+      bus: Bus::new(),
     }
   }
 

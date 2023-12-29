@@ -181,4 +181,13 @@ mod test {
     );
     assert_eq!(rep_word!(0xFE35DD2412ABCD34, 0, 0xDF), 0xFE35DD24000000DF);
   }
+
+  #[test]
+  fn test_check_alignment() {
+    assert_eq!(check_alignment!(4096, 16), true);
+    assert_eq!(check_alignment!(15, 4), false);
+    assert_eq!(check_alignment!(16, 16), true);
+    assert_eq!(check_alignment!(0, 4), true);
+    assert_eq!(check_alignment!(15, 4), false);
+  }
 }

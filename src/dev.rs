@@ -1,8 +1,16 @@
 use crate::check_alignment;
 
 pub struct DeviceInfo {
-  pub name: &'static str,
+  pub dev_type: DeviceType,
+  pub alignment: u64,
   pub len: u64,
+}
+
+pub enum DeviceType {
+  RAM,
+  ROM,
+  MemoryTable,
+  Generic,
 }
 
 pub trait Device {
