@@ -1,31 +1,91 @@
-use crate::{align_up, io::IODevice, rep_byte, rep_hword, check_alignment, rep_word, sel_byte, sel_hword, sel_word};
+/**
+ * Memory Map provided by this emulator:
+ *  [0, 4K): Vacant (so that adress 0 is invalid always)
+ *  [4K, 1M): Device tree followed by vacant memory
+ *  [1M, 4G): Mostly vacant memory + some memory mapped IO, as specified by device tree
+ *  [4Gib ...): Main memory followed by vacant memory
+ *
+ * The mapper guarentees that all memory regions will start at a 4K boundary in [1M, 4G), except
+ * main memory which always starts at 4G.
+ */
+use crate::{
+  align_up,
+  dev::{Device, DeviceInfo, ReadMode, ReadResult, WriteMode, WriteResult},
+  rep_byte, rep_hword, rep_word, sel_byte, sel_hword, sel_word,
+};
 
 pub struct MemoryMapper {
-  io_devs: Vec<ManagedIODevice>,
+  devs: Vec<ManagedDevice>,
 }
 
-struct AddressRegion {
-  start: u64,
-  len: u64,
-}
-
-enum ManagedIODevice {
-  Unmapped(Box<dyn IODevice>),
-  Mapped(AddressRegion, Box<dyn IODevice>),
+struct ManagedDevice {
+  adr_start: u64,
+  adr_end: u64,
+  dev: Box<dyn Device>,
 }
 
 impl MemoryMapper {
   pub fn new() -> Self {
-    Self {
-      io_devs: Vec::new(),
+    Self { devs: Vec::new() }
+  }
+
+  pub fn attach_dev(&mut self, dev: Box<dyn Device>) {
+    let stat = dev.stat();
+    let target_adr = match stat.name {
+      "main_mem" => 4 * 1024 * 1024 * 1024,
+      _ => {
+        let highest_adr = self
+          .devs
+          .iter()
+          .map(|dev| dev.adr_end)
+          .fold(u64::MIN, |a, b| a.max(b));
+        align_up!(highest_adr, 4096)
+      }
+    };
+
+    self.devs.push(ManagedDevice {
+      adr_start: target_adr,
+      adr_end: target_adr + stat.len,
+      dev,
+    });
+  }
+
+  fn find_dev_in_range(
+    &mut self,
+    address: u64,
+  ) -> Option<(u64, &mut ManagedDevice)> {
+    let target_dev = self
+      .devs
+      .iter_mut()
+      .find(|dev| dev.adr_start <= address && address < dev.adr_end);
+    if let None = target_dev {
+      return None;
     }
+    let target_dev = target_dev.unwrap();
+
+    let offset = target_dev.adr_start - address;
+    Some((offset, target_dev))
   }
 
-  pub fn attach_dev(&mut self, dev: Box<dyn IODevice>) {
-    self.io_devs.push(ManagedIODevice::Unmapped(dev))
+  pub fn write(&mut self, address: u64, mode: WriteMode) -> WriteResult {
+    let dev = self.find_dev_in_range(address);
+    if let None = dev {
+      return WriteResult::Fail;
+    }
+
+    let (offset, dev) = dev.unwrap();
+    dev.dev.write(offset, mode)
   }
 
-  pub fn init(&mut self) {}
+  pub fn read(&mut self, address: u64, mode: ReadMode) -> ReadResult {
+    let dev = self.find_dev_in_range(address);
+    if let None = dev {
+      return ReadResult::Fail;
+    }
+
+    let (offset, dev) = dev.unwrap();
+    dev.dev.read(offset, mode)
+  }
 }
 
 pub struct MainMemory {
@@ -43,50 +103,47 @@ impl MainMemory {
   }
 }
 
-impl IODevice for MainMemory {
-  fn stat(&self) -> (&'static str, u64) {
-    ("main_mem", self.len)
+impl Device for MainMemory {
+  fn stat(&self) -> DeviceInfo {
+    DeviceInfo {
+      name: "main_mem",
+      len: self.len,
+    }
   }
 
-  fn write_byte(&mut self, offset: usize, data: u8) {
-    let org = self.mem[offset / 8];
-    self.mem[offset / 8] = rep_byte!(org, offset % 8, data);
+  fn write(&mut self, offset: u64, mode: WriteMode) -> WriteResult {
+    if !mode.verify_alignment(offset) {
+      return WriteResult::Fail;
+    }
+    let org = self.mem[(offset / 8) as usize];
+    let rep = match mode {
+      WriteMode::Byte(data) => {
+        rep_byte!(org, offset % 8, data)
+      }
+      WriteMode::HalfWord(data) => {
+        rep_hword!(org, (offset % 8) / 2, data)
+      }
+      WriteMode::Word(data) => {
+        rep_word!(org, (offset % 8) / 4, data)
+      }
+      WriteMode::DoubleWord(data) => data,
+    };
+    self.mem[(offset / 8) as usize] = rep;
+    WriteResult::Ok
   }
 
-  fn write_hword(&mut self, offset: usize, data: u16) {
-    check_alignment!(offset, 2);
-    let org = self.mem[offset / 8];
-    self.mem[offset / 8] = rep_hword!(org, (offset % 8) / 2, data);
-
-  }
-
-  fn write_word(&mut self, offset: usize, data: u32) {
-    check_alignment!(offset, 4);
-    let org = self.mem[offset / 8];
-    self.mem[offset / 8] = rep_word!(org, (offset % 8) / 4, data);
-  }
-
-  fn write_dword(&mut self, offset: usize, data: u64) {
-    check_alignment!(offset, 8);
-    self.mem[offset / 8] = data;
-  }
-
-  fn read_byte(&mut self, offset: usize) -> u8 {
-    sel_byte!(self.mem[offset / 8], offset % 8)
-  }
-
-  fn read_hword(&mut self, offset: usize) -> u16 {
-    check_alignment!(offset, 2);
-    sel_hword!(self.mem[offset / 8], (offset % 8) / 2)
-  }
-
-  fn read_word(&mut self, offset: usize) -> u32 {
-    check_alignment!(offset, 4);
-    sel_word!(self.mem[offset / 8], (offset % 8) / 4)
-  }
-
-  fn read_dword(&mut self, offset: usize) -> u64 {
-    check_alignment!(offset, 8);
-    self.mem[offset / 8]
+  fn read(&mut self, offset: u64, mode: ReadMode) -> ReadResult {
+    if !mode.verify_alignment(offset) {
+      return ReadResult::Fail;
+    }
+    let org = self.mem[(offset / 8) as usize];
+    let data = match mode {
+      ReadMode::Byte => sel_byte!(org, offset % 8),
+      ReadMode::HalfWord => sel_hword!(org, (offset % 8) / 2),
+      ReadMode::Word => sel_word!(org, (offset % 8) / 4),
+      ReadMode::DoubleWord => org,
+      ReadMode::Instruction => sel_word!(org, (offset % 8) / 4),
+    };
+    ReadResult::Ok(data)
   }
 }

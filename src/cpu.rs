@@ -1,7 +1,7 @@
 use crate::mem::MemoryMapper;
 
 pub struct Hart {
-  pub regfile: [u64; 32],
+  regfile: [u64; 32], // Access through reg_read & reg_write
   pub pc: u64,
   pub mapper: MemoryMapper,
 }
@@ -15,5 +15,19 @@ impl Hart {
     }
   }
 
-  pub fn init() {}
+  #[inline]
+  pub fn reg_read(&self, regn: usize) -> u64 {
+    if regn == 0 {
+      0
+    } else {
+      self.regfile[regn]
+    }
+  }
+
+  #[inline]
+  pub fn reg_write(&mut self, regn: usize, data: u64) {
+    if regn != 0 {
+      self.regfile[regn] = data;
+    }
+  }
 }

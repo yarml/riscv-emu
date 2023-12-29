@@ -36,21 +36,21 @@ macro_rules! word_mask {
 #[macro_export]
 macro_rules! sel_byte {
   ($n:expr, $b:expr) => {
-    (($n as u64 >> ($b * 8)) & 0xFF) as u8
+    (($n as u64 >> ($b * 8)) & 0xFF) as u64
   };
 }
 
 #[macro_export]
 macro_rules! sel_hword {
   ($n:expr, $b:expr) => {
-    (($n as u64 >> ($b * 16)) & 0xFFFF) as u16
+    (($n as u64 >> ($b * 16)) & 0xFFFF) as u64
   };
 }
 
 #[macro_export]
 macro_rules! sel_word {
   ($n:expr, $w:expr) => {
-    (($n as u64 >> ($w * 32)) & 0xFFFFFFFFu64) as u32
+    (($n as u64 >> ($w * 32)) & 0xFFFFFFFFu64) as u64
   };
 }
 
@@ -81,9 +81,7 @@ macro_rules! rep_word {
 #[macro_export]
 macro_rules! check_alignment {
   ($e:expr, $a:expr) => {
-    if $e % $a != 0 {
-      todo!("Misalignment Trap");
-    }
+    $e % $a != 0
   };
 }
 
