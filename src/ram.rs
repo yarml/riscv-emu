@@ -1,4 +1,11 @@
-use crate::{align_up, dev::{Device, DeviceInfo, DeviceType, WriteMode, ReadMode, ReadResult, WriteResult}, rep_byte, rep_hword, rep_word, sel_byte, sel_hword, sel_word};
+use crate::{
+  align_up,
+  dev::{
+    Device, DeviceInfo, DeviceType, ReadMode, ReadResult, WriteMode,
+    WriteResult,
+  },
+  rep_byte, rep_hword, rep_word, sel_byte, sel_hword, sel_word,
+};
 
 pub struct RAM {
   len: u64,
@@ -39,7 +46,7 @@ impl Device for RAM {
       WriteMode::DoubleWord(data) => data,
     };
     self.mem[(offset / 8) as usize] = rep;
-    WriteResult::Ok
+    WriteResult::Ok(())
   }
 
   fn read(&mut self, offset: u64, mode: ReadMode) -> ReadResult {

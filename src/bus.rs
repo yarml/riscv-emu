@@ -69,12 +69,12 @@ impl Bus {
 
   pub fn write(&mut self, address: u64, mode: WriteMode) -> WriteResult {
     if !mode.verify_alignment(address) {
-      return WriteResult::Fail;
+      return WriteResult::Err(());
     }
 
     let dev = self.find_dev_in_range(address);
     if let None = dev {
-      return WriteResult::Fail;
+      return WriteResult::Err(());
     }
 
     let (offset, dev) = dev.unwrap();
@@ -82,16 +82,9 @@ impl Bus {
   }
 
   pub fn read(&mut self, address: u64, mode: ReadMode) -> ReadResult {
-    if !mode.verify_alignment(address) {
-      return ReadResult::Fail;
-    }
+    mode.verify_alignment(address)?;
 
-    let dev = self.find_dev_in_range(address);
-    if let None = dev {
-      return ReadResult::Fail;
-    }
-
-    let (offset, dev) = dev.unwrap();
+    let (offset, dev) = self.find_dev_in_range(address).ok_or(())?;
     dev.dev.read(offset, mode)
   }
 }

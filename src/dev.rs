@@ -1,3 +1,4 @@
+
 use crate::check_alignment;
 
 pub struct DeviceInfo {
@@ -28,10 +29,7 @@ pub enum ReadMode {
   Instruction,
 }
 
-pub enum ReadResult {
-  Fail,
-  Ok(u64),
-}
+pub type ReadResult = Result<u64, ()>;
 
 pub enum WriteMode {
   Byte(u8),
@@ -40,14 +38,14 @@ pub enum WriteMode {
   DoubleWord(u64),
 }
 
-pub enum WriteResult {
-  Fail,
-  Ok,
-}
+pub type WriteResult = Result<(), ()>;
+pub type AlignmentResult = Result<(), ()>;
 
 impl ReadMode {
-  pub fn verify_alignment(&self, offset: u64) -> bool {
+  pub fn verify_alignment(&self, offset: u64) -> AlignmentResult {
     check_alignment!(offset, self.alignment())
+      .then_some(())
+      .ok_or(())
   }
 
   pub fn alignment(&self) -> u64 {

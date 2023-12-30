@@ -13,26 +13,17 @@ use crate::{
 pub struct ROM {
   len: u64,
   mem: Vec<u64>,
-  allow_fetch: bool,
+  allow_fetch: Result<(), ()>,
 }
 
 impl ROM {
   pub fn from_file(path: &str, allow_fetch: bool) -> io::Result<Self> {
-    let mut f = match File::open(path) {
-      Err(e) => return Err(e),
-      Ok(f) => f,
-    };
-    let metadata = match fs::metadata(path) {
-      Err(e) => return Err(e),
-      Ok(metadata) => metadata,
-    };
+    let mut f = File::open(path)?;
+    let metadata = fs::metadata(path)?;
 
     let mut buffer = vec![0u8; metadata.len() as usize];
 
-    let len = match f.read(&mut buffer) {
-      Err(e) => return Err(e),
-      Ok(len) => len,
-    };
+    let len = f.read(&mut buffer)?;
     buffer.truncate(len);
 
     // Push a few 0s until buffer.len() is divisible by 8
@@ -51,7 +42,7 @@ impl ROM {
     Ok(Self {
       len: buffer.len() as u64,
       mem: buffer64,
-      allow_fetch,
+      allow_fetch: allow_fetch.then_some(()).ok_or(()),
     })
   }
 }
@@ -70,7 +61,7 @@ impl Device for ROM {
     _offset: u64,
     _mode: crate::dev::WriteMode,
   ) -> crate::dev::WriteResult {
-    WriteResult::Fail
+    WriteResult::Err(())
   }
 
   fn read(
@@ -85,11 +76,8 @@ impl Device for ROM {
       ReadMode::Word => sel_word!(org, (offset % 8) / 4),
       ReadMode::DoubleWord => org,
       ReadMode::Instruction => {
-        if self.allow_fetch {
-          sel_word!(org, (offset % 8) / 4)
-        } else {
-          return ReadResult::Fail;
-        }
+        self.allow_fetch?;
+        sel_word!(org, (offset % 8) / 4)
       }
     };
     ReadResult::Ok(data)
