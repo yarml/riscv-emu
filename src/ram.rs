@@ -1,3 +1,5 @@
+use std::num::Wrapping;
+
 use crate::{
   align_up,
   dev::{
@@ -31,32 +33,32 @@ impl Device for RAM {
     }
   }
 
-  fn write(&mut self, offset: u64, mode: WriteMode) -> WriteResult {
-    let org = self.mem[(offset / 8) as usize];
+  fn write(&mut self, offset: Wrapping<u64>, mode: WriteMode) -> WriteResult {
+    let org = self.mem[(offset.0 / 8) as usize];
     let rep = match mode {
       WriteMode::Byte(data) => {
-        rep_byte!(org, offset % 8, data)
+        rep_byte!(org, offset.0 % 8, data.0)
       }
       WriteMode::HalfWord(data) => {
-        rep_hword!(org, (offset % 8) / 2, data)
+        rep_hword!(org, (offset.0 % 8) / 2, data.0)
       }
       WriteMode::Word(data) => {
-        rep_word!(org, (offset % 8) / 4, data)
+        rep_word!(org, (offset.0 % 8) / 4, data.0)
       }
-      WriteMode::DoubleWord(data) => data,
+      WriteMode::DoubleWord(data) => data.0,
     };
-    self.mem[(offset / 8) as usize] = rep;
+    self.mem[(offset.0 / 8) as usize] = rep;
     WriteResult::Ok(())
   }
 
-  fn read(&mut self, offset: u64, mode: ReadMode) -> ReadResult {
-    let org = self.mem[(offset / 8) as usize];
+  fn read(&mut self, offset: Wrapping<u64>, mode: ReadMode) -> ReadResult {
+    let org = self.mem[(offset.0 / 8) as usize];
     let data = match mode {
-      ReadMode::Byte => sel_byte!(org, offset % 8),
-      ReadMode::HalfWord => sel_hword!(org, (offset % 8) / 2),
-      ReadMode::Word => sel_word!(org, (offset % 8) / 4),
+      ReadMode::Byte => sel_byte!(org, offset.0 % 8),
+      ReadMode::HalfWord => sel_hword!(org, (offset.0 % 8) / 2),
+      ReadMode::Word => sel_word!(org, (offset.0 % 8) / 4),
       ReadMode::DoubleWord => org,
-      ReadMode::Instruction => sel_word!(org, (offset % 8) / 4),
+      ReadMode::Instruction => sel_word!(org, (offset.0 % 8) / 4),
     };
     ReadResult::Ok(data)
   }

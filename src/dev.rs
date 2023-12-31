@@ -1,3 +1,4 @@
+use std::num::Wrapping;
 
 use crate::check_alignment;
 
@@ -17,8 +18,8 @@ pub enum DeviceType {
 pub trait Device {
   fn stat(&self) -> DeviceInfo;
 
-  fn write(&mut self, offset: u64, mode: WriteMode) -> WriteResult;
-  fn read(&mut self, offset: u64, mode: ReadMode) -> ReadResult;
+  fn write(&mut self, offset: Wrapping<u64>, mode: WriteMode) -> WriteResult;
+  fn read(&mut self, offset: Wrapping<u64>, mode: ReadMode) -> ReadResult;
 }
 
 pub enum ReadMode {
@@ -32,18 +33,18 @@ pub enum ReadMode {
 pub type ReadResult = Result<u64, ()>;
 
 pub enum WriteMode {
-  Byte(u8),
-  HalfWord(u16),
-  Word(u32),
-  DoubleWord(u64),
+  Byte(Wrapping<u8>),
+  HalfWord(Wrapping<u16>),
+  Word(Wrapping<u32>),
+  DoubleWord(Wrapping<u64>),
 }
 
 pub type WriteResult = Result<(), ()>;
 pub type AlignmentResult = Result<(), ()>;
 
 impl ReadMode {
-  pub fn verify_alignment(&self, offset: u64) -> AlignmentResult {
-    check_alignment!(offset, self.alignment())
+  pub fn verify_alignment(&self, offset: Wrapping<u64>) -> AlignmentResult {
+    check_alignment!(offset.0, self.alignment())
       .then_some(())
       .ok_or(())
   }
@@ -60,8 +61,8 @@ impl ReadMode {
 }
 
 impl WriteMode {
-  pub fn verify_alignment(&self, offset: u64) -> bool {
-    check_alignment!(offset, self.alignment())
+  pub fn verify_alignment(&self, offset: Wrapping<u64>) -> bool {
+    check_alignment!(offset.0, self.alignment())
   }
 
   pub fn alignment(&self) -> u64 {

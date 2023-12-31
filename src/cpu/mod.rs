@@ -23,4 +23,10 @@ impl CPU {
       bus: Bus::new(),
     }
   }
+
+  pub fn cycle(&mut self) {
+    self.harts.iter_mut().for_each(|hart| {
+      let _ = hart.cycle(&mut self.bus);
+    });
+  }
 }

@@ -1,3 +1,5 @@
+use crate::funct3;
+
 #[derive(Clone, Copy)]
 pub enum OpImm32Instruction {
   Add,
@@ -39,10 +41,12 @@ const CONV_TABLE2_01: [Option<OpImm32Instruction>; 8] = [
   None,
 ];
 
-impl TryFrom<(u32, u32)> for OpImm32Instruction {
+impl TryFrom<u32> for OpImm32Instruction {
   type Error = ();
 
-  fn try_from((imm_5_11, funct3): (u32, u32)) -> Result<Self, Self::Error> {
+  fn try_from(inst: u32) -> Result<Self, Self::Error> {
+    let funct3 = funct3!(inst);
+    let imm_5_11 = (inst & 0xFC000000) >> 26;
     match CONV_TABLE[funct3 as usize] {
       Some(inst) => Ok(inst),
       None => {

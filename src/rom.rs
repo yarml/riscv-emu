@@ -1,6 +1,7 @@
 use std::{
   fs::{self, File},
   io::{self, Read},
+  num::Wrapping,
 };
 
 use byteorder::{ByteOrder, LittleEndian};
@@ -58,7 +59,7 @@ impl Device for ROM {
 
   fn write(
     &mut self,
-    _offset: u64,
+    _offset: Wrapping<u64>,
     _mode: crate::dev::WriteMode,
   ) -> crate::dev::WriteResult {
     WriteResult::Err(())
@@ -66,18 +67,18 @@ impl Device for ROM {
 
   fn read(
     &mut self,
-    offset: u64,
+    offset: Wrapping<u64>,
     mode: crate::dev::ReadMode,
   ) -> crate::dev::ReadResult {
-    let org = self.mem[(offset / 8) as usize];
+    let org = self.mem[(offset.0 / 8) as usize];
     let data = match mode {
-      ReadMode::Byte => sel_byte!(org, offset % 8),
-      ReadMode::HalfWord => sel_hword!(org, (offset % 8) / 2),
-      ReadMode::Word => sel_word!(org, (offset % 8) / 4),
+      ReadMode::Byte => sel_byte!(org, offset.0 % 8),
+      ReadMode::HalfWord => sel_hword!(org, (offset.0 % 8) / 2),
+      ReadMode::Word => sel_word!(org, (offset.0 % 8) / 4),
       ReadMode::DoubleWord => org,
       ReadMode::Instruction => {
         self.allow_fetch?;
-        sel_word!(org, (offset % 8) / 4)
+        sel_word!(org, (offset.0 % 8) / 4)
       }
     };
     ReadResult::Ok(data)

@@ -1,3 +1,5 @@
+use std::num::Wrapping;
+
 /**
  * Memory Map provided by this emulator:
  *  [0, 4K): Vacant (so that adress 0 is invalid always)
@@ -15,8 +17,8 @@ pub struct Bus {
 }
 
 struct BusDevice {
-  adr_start: u64,
-  adr_end: u64, // Invalid address already
+  adr_start: Wrapping<u64>,
+  adr_end: Wrapping<u64>, // Invalid address already
   dev: Box<dyn Device>,
 }
 
@@ -32,28 +34,28 @@ impl Bus {
         .devs
         .iter()
         .map(|dev| dev.adr_end)
-        .fold(0, |a, b| a.max(b));
-      align_up!(
-        if highest_adr == 0 {
+        .fold(Wrapping(0), |a, b| a.max(b));
+      Wrapping(align_up!(
+        if highest_adr == Wrapping(0) {
           mib!(16)
         } else {
-          highest_adr
+          highest_adr.0
         },
         stat.alignment
-      )
+      ))
     };
 
     self.devs.push(BusDevice {
       adr_start: target_adr,
-      adr_end: target_adr + stat.len,
+      adr_end: target_adr + Wrapping(stat.len),
       dev,
     });
   }
 
   fn find_dev_in_range(
     &mut self,
-    address: u64,
-  ) -> Option<(u64, &mut BusDevice)> {
+    address: Wrapping<u64>,
+  ) -> Option<(Wrapping<u64>, &mut BusDevice)> {
     let target_dev = self
       .devs
       .iter_mut()
@@ -67,7 +69,11 @@ impl Bus {
     Some((offset, target_dev))
   }
 
-  pub fn write(&mut self, address: u64, mode: WriteMode) -> WriteResult {
+  pub fn write(
+    &mut self,
+    address: Wrapping<u64>,
+    mode: WriteMode,
+  ) -> WriteResult {
     if !mode.verify_alignment(address) {
       return WriteResult::Err(());
     }
@@ -81,7 +87,7 @@ impl Bus {
     dev.dev.write(offset, mode)
   }
 
-  pub fn read(&mut self, address: u64, mode: ReadMode) -> ReadResult {
+  pub fn read(&mut self, address: Wrapping<u64>, mode: ReadMode) -> ReadResult {
     mode.verify_alignment(address)?;
 
     let (offset, dev) = self.find_dev_in_range(address).ok_or(())?;

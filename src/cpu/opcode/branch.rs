@@ -1,3 +1,5 @@
+use crate::funct3;
+
 #[derive(Clone, Copy)]
 pub enum BranchInstruction {
   Equal,
@@ -22,7 +24,8 @@ const CONV_TABLE: [Option<BranchInstruction>; 8] = [
 impl TryFrom<u32> for BranchInstruction {
   type Error = ();
 
-  fn try_from(funct: u32) -> Result<Self, Self::Error> {
-    CONV_TABLE[funct as usize].ok_or(())
+  fn try_from(inst: u32) -> Result<Self, Self::Error> {
+    let funct3 = funct3!(inst);
+    CONV_TABLE[funct3 as usize].ok_or(())
   }
 }

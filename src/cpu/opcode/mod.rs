@@ -1,10 +1,16 @@
 mod branch;
+mod common;
 mod load;
 mod op;
 mod op32;
 mod opimm;
 mod opimm32;
 mod store;
+
+use crate::{rd, rs1, rs2};
+
+use self::opimm::OpImmInstruction;
+use super::{cycle::CycleResult, hart::Hart};
 
 #[derive(Clone, Copy)]
 pub enum Opcode {
@@ -22,11 +28,30 @@ pub enum Opcode {
   OpImm32,
   Op32,
   // Add AMO when atomic memory operations are implemented
-  // Add FP opcodes if I ever chose to support them
 }
 
 impl Opcode {
-  fn exec(inst: u32) {}
+  pub fn exec(&self, inst: u32, hart: &mut Hart) -> CycleResult {
+    let rd = rd!(inst);
+    let rs1 = rs1!(inst);
+    let rs2 = rs2!(inst);
+
+    match self {
+      Opcode::OpImm => Ok(OpImmInstruction::try_from(inst)?.exec(inst, hart)),
+      Opcode::LUI => todo!(),
+      Opcode::AUIPC => todo!(),
+      Opcode::Op => todo!(),
+      Opcode::JAL => todo!(),
+      Opcode::JALR => todo!(),
+      Opcode::Branch => todo!(),
+      Opcode::Load => todo!(),
+      Opcode::Store => todo!(),
+      Opcode::MiscMem => todo!(),
+      Opcode::System => todo!(),
+      Opcode::OpImm32 => todo!(),
+      Opcode::Op32 => todo!(),
+    }
+  }
 }
 
 const CONV_TABLE: [[Option<Opcode>; 7]; 4] = [
