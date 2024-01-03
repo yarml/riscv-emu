@@ -88,9 +88,26 @@ macro_rules! check_alignment {
   };
 }
 
+// I am very much surprised I got this to work
+// Me proud of myself
+// Now I just gotta remember where I wanted to use it...
 #[macro_export]
-macro_rules! sign_extend {
-  ($org:expr, $bit_idx:expr) => {
-
+macro_rules! build_num {
+  ($type:ty; $([$end:expr, $start:expr]),+) => {
+    0 as $type $(| (!(<$type>::MAX << ($end - $start + 1))) << $start)*
   };
+}
+
+mod test {
+  #[test]
+  fn test_build_num() {
+    let result = build_num!(u64; [30, 24], [20, 10], [5, 0]);
+    let expected =
+      0b0000000000000000000000000000000001111111000111111111110000111111u64;
+    assert_eq!(result, expected);
+
+    let result = build_num!(u32; [30, 5], [2, 0]);
+    let expected = 0b01111111111111111111111111100111u32;
+    assert_eq!(result, expected);
+  }
 }
