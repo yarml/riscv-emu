@@ -1,6 +1,6 @@
 use std::num::Wrapping;
 
-use crate::{cpu::hart::Hart, funct3, rd, rs1};
+use crate::{cpu::hart::Hart, funct3, rd, rs1, imm_i};
 
 #[derive(Clone, Copy)]
 pub enum OpImmInstruction {
@@ -19,11 +19,9 @@ impl OpImmInstruction {
   pub fn exec(&self, inst: u32, hart: &mut Hart) {
     let rd = rd!(inst);
     let rs1 = rs1!(inst);
-    let imm = Wrapping(
-      ((inst & 0xFFF00000) >> 20) as u64 as i64
-        | ((0xFFFFFFFFFFFFF000u64 as i64) * (inst >> 31) as i64),
-    );
-    let imm_u = Wrapping(imm.0 as u64);
+
+    let imm_u = Wrapping(imm_i!(inst));
+    let imm = Wrapping(imm_u.0 as i64);
 
     let s1u = hart.reg_read(rs1 as usize);
     let s1 = Wrapping(s1u.0 as i64);
