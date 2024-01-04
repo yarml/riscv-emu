@@ -124,25 +124,22 @@ macro_rules! select_bits {
 #[macro_export]
 macro_rules! map_bits {
   ([$type:ty : $source:expr];) => {
-    $source as $type
+    0 as $type
   };
   {[$type:ty : $source:expr]; repeat $src:expr => [$dest_end:expr, $dest_start:expr]; $($tail:tt)*} => {
-    $crate::map_bits! {
-      [$type : (!(<$type>::MAX << ($dest_end - $dest_start + 1)) << $dest_start) * (($source >> $src) & 1)];
+    (!(<$type>::MAX << ($dest_end - $dest_start + 1)) << $dest_start) * (($source >> $src) & 1) | $crate::map_bits! {
+      [$type : $source];
       $($tail)*
     }
   };
   {[$type:ty : $source:expr]; copy [$src_end:expr,$src_start:expr] => $dest:expr; $($tail:tt)*} => {
     if $src_start > $dest {
-      $crate::map_bits! {
-        [$type : (((!(<$type>::MAX << ($src_end - $src_start + 1))) << $src_start) & $source) >> ($src_start - $dest)];
-        $($tail)*
-      }
+      (((!(<$type>::MAX << ($src_end - $src_start + 1))) << $src_start) & $source) >> ($src_start - $dest)
     } else {
-      $crate::map_bits! {
-        [$type : (((!(<$type>::MAX << ($src_end - $src_start + 1))) << $src_start) & $source) << ($dest - $src_start)];
-        $($tail)*
-      }
+      (((!(<$type>::MAX << ($src_end - $src_start + 1))) << $src_start) & $source) << ($dest - $src_start)
+    }| $crate::map_bits! {
+      [$type : $source];
+      $($tail)*
     }
   };
   {[$type:ty : $source:expr]; copy $src:expr => $dest:expr; $($tail:tt)*} => {
@@ -176,7 +173,6 @@ mod test {
   #[test]
   fn test_map_bits() {
     let source = 0b10010010010101100001001111010101u32;
-
     let result = map_bits! {
       [u32 : source];
       repeat 28 => [15, 5];
@@ -200,11 +196,12 @@ mod test {
 
     let result = map_bits! {
       [u32 : source];
-      copy 20 => 1;
+      copy 20 => 0;
       copy [24, 21] => 1;
       copy [30, 25] => 5;
       repeat 31 => [31, 11];
     };
-    let expected = 0b0u32;
+    let expected = 0b11111111111111111111100100100101u32;
+    assert_eq!(result, expected);
   }
 }
