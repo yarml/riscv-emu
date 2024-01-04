@@ -2,7 +2,10 @@ use std::num::Wrapping;
 
 use crate::{bus::Bus, dev::ReadMode};
 
-use super::{cycle::CycleResult, opcode::Opcode};
+use super::{
+  cycle::CycleResult,
+  opcode::{Opcode, OpcodeExecResult},
+};
 
 pub struct Hart {
   regfile: [Wrapping<u64>; 32], // Access through reg_read & reg_write
@@ -37,7 +40,13 @@ impl Hart {
     let inst = bus.read(self.pc, ReadMode::Instruction)? as u32;
     let opcode: Opcode = (inst & 0b1111111).try_into()?;
 
-    opcode.exec(inst, self)?;
+    let next_pc = match opcode.exec(inst, self) {
+      OpcodeExecResult::Fail => todo!(),
+      OpcodeExecResult::Normal => self.pc + Wrapping(4),
+      OpcodeExecResult::SetPC(new_pc) => new_pc,
+    };
+
+    self.pc = next_pc;
 
     CycleResult::Ok(())
   }

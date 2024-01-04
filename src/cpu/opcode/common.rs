@@ -15,21 +15,21 @@ macro_rules! funct7 {
 #[macro_export]
 macro_rules! rd {
   ($inst:expr) => {
-    ($inst & 0b111000000000000) >> 12
+    (($inst & 0b111000000000000) >> 12) as usize
   };
 }
 
 #[macro_export]
 macro_rules! rs1 {
   ($inst:expr) => {
-    ($inst & 0b11111000000000000000) >> 15
+    (($inst & 0b11111000000000000000) >> 15) as usize
   };
 }
 
 #[macro_export]
 macro_rules! rs2 {
   ($inst:expr) => {
-    ($inst & 0b1111100000000000000000000) >> 20
+    (($inst & 0b1111100000000000000000000) >> 20) as usize
   };
 }
 

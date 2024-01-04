@@ -7,10 +7,12 @@ mod opimm;
 mod opimm32;
 mod store;
 
-use crate::{rd, rs1, rs2};
+use std::num::Wrapping;
 
-use self::opimm::OpImmInstruction;
-use super::{cycle::CycleResult, hart::Hart};
+use crate::{imm_u, rd, rs1, rs2};
+
+use self::{op::OpInstruction, opimm::OpImmInstruction};
+use super::hart::Hart;
 
 #[derive(Clone, Copy)]
 pub enum Opcode {
@@ -30,17 +32,43 @@ pub enum Opcode {
   // Add AMO when atomic memory operations are implemented
 }
 
+pub enum OpcodeExecResult {
+  Fail, // Maybe add more detail here, idk
+  Normal,
+  SetPC(Wrapping<u64>),
+}
+
 impl Opcode {
-  pub fn exec(&self, inst: u32, hart: &mut Hart) -> CycleResult {
+  pub fn exec(&self, inst: u32, hart: &mut Hart) -> OpcodeExecResult {
     let rd = rd!(inst);
     let rs1 = rs1!(inst);
     let rs2 = rs2!(inst);
 
+    let immu_u = Wrapping(imm_u!(inst));
+
     match self {
-      Opcode::OpImm => Ok(OpImmInstruction::try_from(inst)?.exec(inst, hart)),
-      Opcode::LUI => todo!(),
-      Opcode::AUIPC => todo!(),
-      Opcode::Op => todo!(),
+      Opcode::OpImm => match OpImmInstruction::try_from(inst) {
+        Err(_) => OpcodeExecResult::Fail,
+        Ok(opimm_inst) => {
+          opimm_inst.exec(inst, hart);
+          OpcodeExecResult::Normal
+        }
+      },
+      Opcode::LUI => {
+        hart.reg_write(rd, immu_u);
+        OpcodeExecResult::Normal
+      }
+      Opcode::AUIPC => {
+        hart.reg_write(rd, immu_u + hart.pc);
+        OpcodeExecResult::Normal
+      }
+      Opcode::Op => match OpInstruction::try_from(inst) {
+        Err(_) => OpcodeExecResult::Fail,
+        Ok(op_inst) => {
+          op_inst.exec(inst, hart);
+          OpcodeExecResult::Normal
+        }
+      },
       Opcode::JAL => todo!(),
       Opcode::JALR => todo!(),
       Opcode::Branch => todo!(),
