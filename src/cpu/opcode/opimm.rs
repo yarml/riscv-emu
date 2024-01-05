@@ -1,6 +1,6 @@
 use std::num::Wrapping;
 
-use crate::{cpu::hart::Hart, funct3, rd, rs1, imm_i};
+use crate::{funct3, map_bits};
 
 #[derive(Clone, Copy)]
 pub enum OpImmInstruction {
@@ -16,45 +16,43 @@ pub enum OpImmInstruction {
 }
 
 impl OpImmInstruction {
-  pub fn exec(&self, inst: u32, hart: &mut Hart) {
-    let rd = rd!(inst);
-    let rs1 = rs1!(inst);
-
-    let imm_u = Wrapping(imm_i!(inst));
+  pub fn calc(
+    &self,
+    imm_u: Wrapping<u64>,
+    rs1v_u: Wrapping<u64>,
+  ) -> Wrapping<u64> {
+    let rs1v = Wrapping(rs1v_u.0 as i64);
     let imm = Wrapping(imm_u.0 as i64);
+    let shamt_u = map_bits! {
+      [usize : imm_u.0 as usize];
+      copy [4, 0] => 0;
+    };
 
-    let s1u = hart.reg_read(rs1 as usize);
-    let s1 = Wrapping(s1u.0 as i64);
-
-    let shamt_u = (imm_u.0 & 0b111111) as usize;
-
-    let result = match self {
-      OpImmInstruction::Add => Wrapping((s1 + imm).0 as u64),
-      OpImmInstruction::ShiftLogicalLeft => s1u << shamt_u,
-      OpImmInstruction::ShiftLogicalRight => s1u >> shamt_u,
+    match self {
+      OpImmInstruction::Add => Wrapping((rs1v + imm).0 as u64),
+      OpImmInstruction::ShiftLogicalLeft => rs1v_u << shamt_u,
+      OpImmInstruction::ShiftLogicalRight => rs1v_u >> shamt_u,
       OpImmInstruction::ShiftArithmeticRight => {
-        Wrapping((s1 >> shamt_u).0 as u64)
+        Wrapping((rs1v >> shamt_u).0 as u64)
       }
       OpImmInstruction::SetLessThan => {
-        if s1 < imm {
+        if rs1v < imm {
           Wrapping(1)
         } else {
           Wrapping(0)
         }
       }
       OpImmInstruction::SetLessThanUnsigned => {
-        if s1u < imm_u {
+        if rs1v_u < imm_u {
           Wrapping(1)
         } else {
           Wrapping(0)
         }
       }
-      OpImmInstruction::XOR => s1u ^ imm_u,
-      OpImmInstruction::OR => s1u | imm_u,
-      OpImmInstruction::AND => s1u & imm_u,
-    };
-
-    hart.reg_write(rd as usize, result);
+      OpImmInstruction::XOR => rs1v_u ^ imm_u,
+      OpImmInstruction::OR => rs1v_u | imm_u,
+      OpImmInstruction::AND => rs1v_u & imm_u,
+    }
   }
 }
 

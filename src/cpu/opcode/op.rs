@@ -1,6 +1,6 @@
 use std::num::Wrapping;
 
-use crate::{cpu::hart::Hart, funct3, funct7, rd, rs1, rs2};
+use crate::{funct3, funct7, map_bits};
 
 #[derive(Clone, Copy)]
 pub enum OpInstruction {
@@ -17,20 +17,20 @@ pub enum OpInstruction {
 }
 
 impl OpInstruction {
-  pub fn exec(&self, inst: u32, hart: &mut Hart) {
-    let rd = rd!(inst);
-    let rs1 = rs1!(inst);
-    let rs2 = rs2!(inst);
-
-    let rs1v_u = hart.reg_read(rs1);
-    let rs2v_u = hart.reg_read(rs2);
-
+  pub fn calc(
+    &self,
+    rs1v_u: Wrapping<u64>,
+    rs2v_u: Wrapping<u64>,
+  ) -> Wrapping<u64> {
     let rs1v = Wrapping(rs1v_u.0 as i64);
     let rs2v = Wrapping(rs1v_u.0 as i64);
 
-    let shamt_u = (rs2v_u.0 & 0b11111) as usize;
+    let shamt_u = map_bits! {
+      [usize : rs2v_u.0 as usize];
+      copy [4, 0] => 0;
+    };
 
-    let result = match self {
+    match self {
       OpInstruction::Add => rs1v_u + rs2v_u,
       OpInstruction::Sub => rs1v_u - rs2v_u,
       OpInstruction::ShiftLogicalLeft => rs1v_u << shamt_u,
@@ -55,9 +55,7 @@ impl OpInstruction {
       OpInstruction::XOR => rs1v_u ^ rs2v_u,
       OpInstruction::OR => rs1v_u | rs2v_u,
       OpInstruction::AND => rs1v_u & rs2v_u,
-    };
-
-    hart.reg_write(rd, result);
+    }
   }
 }
 

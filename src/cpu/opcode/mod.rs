@@ -59,7 +59,8 @@ impl Opcode {
       Opcode::OpImm => match OpImmInstruction::try_from(inst) {
         Err(_) => OpcodeExecResult::Fail,
         Ok(opimm_inst) => {
-          opimm_inst.exec(inst, hart);
+          let result = opimm_inst.calc(immi_u, rs1v_u);
+          hart.reg_write(rd, result);
           OpcodeExecResult::Normal
         }
       },
@@ -74,7 +75,8 @@ impl Opcode {
       Opcode::Op => match OpInstruction::try_from(inst) {
         Err(_) => OpcodeExecResult::Fail,
         Ok(op_inst) => {
-          op_inst.exec(inst, hart);
+          let result = op_inst.calc(rs1v_u, rs2v_u);
+          hart.reg_write(rd, result);
           OpcodeExecResult::Normal
         }
       },
