@@ -1,4 +1,6 @@
-use crate::funct3;
+use std::num::Wrapping;
+
+use crate::{funct3, map_bits};
 
 #[derive(Clone, Copy)]
 pub enum OpImm32Instruction {
@@ -6,6 +8,32 @@ pub enum OpImm32Instruction {
   ShiftLogicalLeft,
   ShiftLogicalRight,
   ShiftArithmeticRight,
+}
+
+impl OpImm32Instruction {
+  pub fn calc(
+    &self,
+    imm_u: Wrapping<u64>,
+    rs1v_u: Wrapping<u64>,
+  ) -> Wrapping<u64> {
+    let rs1v = Wrapping(rs1v_u.0 as i64);
+    let shamt_u = map_bits! {
+      [usize : imm_u.0 as usize];
+      copy [24, 20] => 0;
+    };
+    let result = match self {
+      Self::Add => rs1v_u + imm_u,
+      Self::ShiftLogicalLeft => rs1v_u << shamt_u,
+      Self::ShiftLogicalRight => rs1v_u >> shamt_u,
+      Self::ShiftArithmeticRight => Wrapping((rs1v >> shamt_u).0 as u64),
+    };
+
+    Wrapping(map_bits! {
+      [u64 : result.0];
+      copy [30, 0] => 0;
+      repeat 31 => [63, 31];
+    })
+  }
 }
 
 // None means check CONV_TABLE2_*

@@ -15,7 +15,8 @@ use crate::{bus::Bus, imm_b, imm_i, imm_j, imm_s, imm_u, rd, rs1, rs2};
 
 use self::{
   branch::BranchInstruction, load::LoadInstruction,
-  misc_mem::MiscMemInstruction, op::OpInstruction, opimm::OpImmInstruction,
+  misc_mem::MiscMemInstruction, op::OpInstruction, op32::Op32Instruction,
+  opimm::OpImmInstruction, opimm32::OpImm32Instruction,
   store::StoreInstruction, system::SystemInstruction,
 };
 use super::hart::Hart;
@@ -66,7 +67,7 @@ impl Opcode {
     let imms_u = Wrapping(imm_s!(inst));
 
     match self {
-      Opcode::OpImm => match OpImmInstruction::try_from(inst) {
+      Self::OpImm => match OpImmInstruction::try_from(inst) {
         Err(_) => OpcodeExecResult::Fail,
         Ok(opimm_inst) => {
           let result = opimm_inst.calc(immi_u, rs1v_u);
@@ -74,15 +75,15 @@ impl Opcode {
           OpcodeExecResult::Normal
         }
       },
-      Opcode::LUI => {
-        hart.reg_write(rd, immu_u);
-        OpcodeExecResult::Normal
-      }
-      Opcode::AUIPC => {
-        hart.reg_write(rd, immu_u + hart.pc);
-        OpcodeExecResult::Normal
-      }
-      Opcode::Op => match OpInstruction::try_from(inst) {
+      Self::OpImm32 => match OpImm32Instruction::try_from(inst) {
+        Err(_) => OpcodeExecResult::Fail,
+        Ok(opimm32_inst) => {
+          let result = opimm32_inst.calc(immi_u, rs1v_u);
+          hart.reg_write(rd, result);
+          OpcodeExecResult::Normal
+        }
+      },
+      Self::Op => match OpInstruction::try_from(inst) {
         Err(_) => OpcodeExecResult::Fail,
         Ok(op_inst) => {
           let result = op_inst.calc(rs1v_u, rs2v_u);
@@ -90,15 +91,31 @@ impl Opcode {
           OpcodeExecResult::Normal
         }
       },
-      Opcode::JAL => {
+      Self::Op32 => match Op32Instruction::try_from(inst) {
+        Err(_) => OpcodeExecResult::Fail,
+        Ok(op32_inst) => {
+          let result = op32_inst.calc(rs1v_u, rs2v_u);
+          hart.reg_write(rd, result);
+          OpcodeExecResult::Normal
+        }
+      },
+      Self::LUI => {
+        hart.reg_write(rd, immu_u);
+        OpcodeExecResult::Normal
+      }
+      Self::AUIPC => {
+        hart.reg_write(rd, immu_u + hart.pc);
+        OpcodeExecResult::Normal
+      }
+      Self::JAL => {
         hart.reg_write(rd, hart.next_pc());
         OpcodeExecResult::RelPC(immj_u)
       }
-      Opcode::JALR => {
+      Self::JALR => {
         hart.reg_write(rd, hart.next_pc());
         OpcodeExecResult::AbsPC(rs1v_u + immi_u)
       }
-      Opcode::Branch => match BranchInstruction::try_from(inst) {
+      Self::Branch => match BranchInstruction::try_from(inst) {
         Err(_) => OpcodeExecResult::Fail,
         Ok(branch_inst) => {
           if branch_inst.check(rs1v_u.0, rs2v_u.0) {
@@ -108,7 +125,7 @@ impl Opcode {
           }
         }
       },
-      Opcode::Load => match LoadInstruction::try_from(inst) {
+      Self::Load => match LoadInstruction::try_from(inst) {
         Err(_) => OpcodeExecResult::Fail,
         Ok(load_inst) => match bus.read(rs1v_u + immi_u, load_inst.into()) {
           Err(_) => OpcodeExecResult::Fail,
@@ -118,7 +135,7 @@ impl Opcode {
           }
         },
       },
-      Opcode::Store => match StoreInstruction::try_from(inst) {
+      Self::Store => match StoreInstruction::try_from(inst) {
         Err(_) => OpcodeExecResult::Fail,
         Ok(store_inst) => {
           match bus.write(imms_u + rs1v_u, store_inst.into_write_mode(rs2v_u.0))
@@ -128,22 +145,20 @@ impl Opcode {
           }
         }
       },
-      Opcode::MiscMem => match MiscMemInstruction::try_from(inst) {
+      Self::MiscMem => match MiscMemInstruction::try_from(inst) {
         Err(_) => OpcodeExecResult::Fail,
         Ok(misc_mem_inst) => {
           misc_mem_inst.exec();
           OpcodeExecResult::Normal
         }
       },
-      Opcode::System => match SystemInstruction::try_from(inst) {
+      Self::System => match SystemInstruction::try_from(inst) {
         Err(_) => OpcodeExecResult::Fail,
         Ok(sys_inst) => {
           sys_inst.exec();
           OpcodeExecResult::Normal
         }
       },
-      Opcode::OpImm32 => todo!(),
-      Opcode::Op32 => todo!(),
     }
   }
 }

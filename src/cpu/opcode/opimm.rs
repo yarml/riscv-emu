@@ -25,11 +25,11 @@ impl OpImmInstruction {
     let imm = Wrapping(imm_u.0 as i64);
     let shamt_u = map_bits! {
       [usize : imm_u.0 as usize];
-      copy [4, 0] => 0;
+      copy [25, 20] => 0;
     };
 
     match self {
-      OpImmInstruction::Add => Wrapping((rs1v + imm).0 as u64),
+      OpImmInstruction::Add => rs1v_u + imm_u,
       OpImmInstruction::ShiftLogicalLeft => rs1v_u << shamt_u,
       OpImmInstruction::ShiftLogicalRight => rs1v_u >> shamt_u,
       OpImmInstruction::ShiftArithmeticRight => {
