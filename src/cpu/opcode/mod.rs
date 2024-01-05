@@ -1,19 +1,22 @@
 mod branch;
 mod common;
 mod load;
+mod misc_mem;
 mod op;
 mod op32;
 mod opimm;
 mod opimm32;
 mod store;
+mod system;
 
 use std::num::Wrapping;
 
 use crate::{bus::Bus, imm_b, imm_i, imm_j, imm_s, imm_u, rd, rs1, rs2};
 
 use self::{
-  branch::BranchInstruction, load::LoadInstruction, op::OpInstruction,
-  opimm::OpImmInstruction, store::StoreInstruction,
+  branch::BranchInstruction, load::LoadInstruction,
+  misc_mem::MiscMemInstruction, op::OpInstruction, opimm::OpImmInstruction,
+  store::StoreInstruction, system::SystemInstruction,
 };
 use super::hart::Hart;
 
@@ -125,8 +128,20 @@ impl Opcode {
           }
         }
       },
-      Opcode::MiscMem => todo!(),
-      Opcode::System => todo!(),
+      Opcode::MiscMem => match MiscMemInstruction::try_from(inst) {
+        Err(_) => OpcodeExecResult::Fail,
+        Ok(misc_mem_inst) => {
+          misc_mem_inst.exec();
+          OpcodeExecResult::Normal
+        }
+      },
+      Opcode::System => match SystemInstruction::try_from(inst) {
+        Err(_) => OpcodeExecResult::Fail,
+        Ok(sys_inst) => {
+          sys_inst.exec();
+          OpcodeExecResult::Normal
+        }
+      },
       Opcode::OpImm32 => todo!(),
       Opcode::Op32 => todo!(),
     }

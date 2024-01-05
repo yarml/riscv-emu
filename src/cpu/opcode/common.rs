@@ -19,6 +19,16 @@ macro_rules! funct7 {
 }
 
 #[macro_export]
+macro_rules! funct12 {
+  ($inst:expr) => {
+    $crate::map_bits! {
+      [u64 : $inst as u64];
+      copy [31, 20] => 0;
+    }
+  };
+}
+
+#[macro_export]
 macro_rules! rd {
   ($inst:expr) => {
     $crate::map_bits! {
