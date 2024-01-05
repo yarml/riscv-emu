@@ -9,9 +9,11 @@ mod store;
 
 use std::num::Wrapping;
 
-use crate::{imm_u, rd, rs1, rs2};
+use crate::{imm_b, imm_i, imm_j, imm_u, rd, rs1, rs2};
 
-use self::{op::OpInstruction, opimm::OpImmInstruction};
+use self::{
+  branch::BranchInstruction, op::OpInstruction, opimm::OpImmInstruction,
+};
 use super::hart::Hart;
 
 #[derive(Clone, Copy)]
@@ -35,7 +37,8 @@ pub enum Opcode {
 pub enum OpcodeExecResult {
   Fail, // Maybe add more detail here, idk
   Normal,
-  SetPC(Wrapping<u64>),
+  RelPC(Wrapping<u64>),
+  AbsPC(Wrapping<u64>),
 }
 
 impl Opcode {
@@ -44,7 +47,13 @@ impl Opcode {
     let rs1 = rs1!(inst);
     let rs2 = rs2!(inst);
 
+    let rs1v_u = hart.reg_read(rs1);
+    let rs2v_u = hart.reg_read(rs2);
+
+    let immi_u = Wrapping(imm_i!(inst));
     let immu_u = Wrapping(imm_u!(inst));
+    let immj_u = Wrapping(imm_j!(inst));
+    let immb_u = Wrapping(imm_b!(inst));
 
     match self {
       Opcode::OpImm => match OpImmInstruction::try_from(inst) {
@@ -69,9 +78,24 @@ impl Opcode {
           OpcodeExecResult::Normal
         }
       },
-      Opcode::JAL => todo!(),
-      Opcode::JALR => todo!(),
-      Opcode::Branch => todo!(),
+      Opcode::JAL => {
+        hart.reg_write(rd, hart.next_pc());
+        OpcodeExecResult::RelPC(immj_u)
+      }
+      Opcode::JALR => {
+        hart.reg_write(rd, hart.next_pc());
+        OpcodeExecResult::AbsPC(rs1v_u + immi_u)
+      }
+      Opcode::Branch => match BranchInstruction::try_from(inst) {
+        Err(_) => OpcodeExecResult::Fail,
+        Ok(branch_inst) => {
+          if branch_inst.check(rs1v_u.0, rs2v_u.0) {
+            OpcodeExecResult::RelPC(immb_u)
+          } else {
+            OpcodeExecResult::Normal
+          }
+        }
+      },
       Opcode::Load => todo!(),
       Opcode::Store => todo!(),
       Opcode::MiscMem => todo!(),

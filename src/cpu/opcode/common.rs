@@ -1,35 +1,50 @@
 #[macro_export]
 macro_rules! funct3 {
   ($inst:expr) => {
-    ($inst & 0b111000000000000) >> 12
+    $crate::map_bits! {
+      [u64 : $inst as u64];
+      copy [14, 12] => 0;
+    }
   };
 }
 
 #[macro_export]
 macro_rules! funct7 {
   ($inst:expr) => {
-    ($inst & 0xFE000000) >> 25
+    $crate::map_bits! {
+      [u64 : $inst as u64];
+      copy [31, 25] => 0;
+    }
   };
 }
 
 #[macro_export]
 macro_rules! rd {
   ($inst:expr) => {
-    (($inst & 0b111000000000000) >> 12) as usize
+    $crate::map_bits! {
+      [usize : $inst as usize];
+      copy [11, 7] => 0;
+    }
   };
 }
 
 #[macro_export]
 macro_rules! rs1 {
   ($inst:expr) => {
-    (($inst & 0b11111000000000000000) >> 15) as usize
+    $crate::map_bits! {
+      [usize : $inst as usize];
+      copy [19, 15] => 0;
+    }
   };
 }
 
 #[macro_export]
 macro_rules! rs2 {
   ($inst:expr) => {
-    (($inst & 0b1111100000000000000000000) >> 20) as usize
+    $crate::map_bits! {
+      [usize : $inst as usize];
+      copy [24, 20] => 0;
+    }
   };
 }
 

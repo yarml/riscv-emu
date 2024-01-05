@@ -42,12 +42,18 @@ impl Hart {
 
     let next_pc = match opcode.exec(inst, self) {
       OpcodeExecResult::Fail => todo!(),
-      OpcodeExecResult::Normal => self.pc + Wrapping(4),
-      OpcodeExecResult::SetPC(new_pc) => new_pc,
+      OpcodeExecResult::Normal => self.next_pc(),
+      OpcodeExecResult::RelPC(rel_pc) => self.pc + rel_pc,
+      OpcodeExecResult::AbsPC(new_pc) => new_pc,
     };
 
+    // TODO: Check is next_pc is 4 byte aligned
     self.pc = next_pc;
 
     CycleResult::Ok(())
+  }
+
+  pub fn next_pc(&self) -> Wrapping<u64> {
+    self.pc + Wrapping(4)
   }
 }
