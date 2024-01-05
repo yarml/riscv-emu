@@ -40,8 +40,8 @@ impl Hart {
     let inst = bus.read(self.pc, ReadMode::Instruction)? as u32;
     let opcode: Opcode = (inst & 0b1111111).try_into()?;
 
-    let next_pc = match opcode.exec(inst, self) {
-      OpcodeExecResult::Fail => todo!(),
+    let next_pc = match opcode.exec(inst, self, bus) {
+      OpcodeExecResult::Fail => return Err(()),
       OpcodeExecResult::Normal => self.next_pc(),
       OpcodeExecResult::RelPC(rel_pc) => self.pc + rel_pc,
       OpcodeExecResult::AbsPC(new_pc) => new_pc,

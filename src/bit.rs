@@ -133,14 +133,16 @@ macro_rules! map_bits {
     }
   };
   {[$type:ty : $source:expr]; copy [$src_end:expr,$src_start:expr] => $dest:expr; $($tail:tt)*} => {
-    if $src_start > $dest {
-      (((!(<$type>::MAX << ($src_end - $src_start + 1))) << $src_start) & $source) >> ($src_start - $dest)
-    } else {
-      (((!(<$type>::MAX << ($src_end - $src_start + 1))) << $src_start) & $source) << ($dest - $src_start)
-    }| $crate::map_bits! {
-      [$type : $source];
-      $($tail)*
-    }
+    (
+      if $src_start > $dest {
+        (((!(<$type>::MAX << ($src_end - $src_start + 1))) << $src_start) & $source) >> ($src_start - $dest)
+      } else {
+        (((!(<$type>::MAX << ($src_end - $src_start + 1))) << $src_start) & $source) << ($dest - $src_start)
+      }| $crate::map_bits! {
+        [$type : $source];
+        $($tail)*
+      }
+    )
   };
   {[$type:ty : $source:expr]; copy $src:expr => $dest:expr; $($tail:tt)*} => {
     $crate::map_bits! {

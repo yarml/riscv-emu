@@ -9,10 +9,11 @@ mod store;
 
 use std::num::Wrapping;
 
-use crate::{imm_b, imm_i, imm_j, imm_u, rd, rs1, rs2};
+use crate::{bus::Bus, imm_b, imm_i, imm_j, imm_u, rd, rs1, rs2};
 
 use self::{
-  branch::BranchInstruction, op::OpInstruction, opimm::OpImmInstruction,
+  branch::BranchInstruction, load::LoadInstruction, op::OpInstruction,
+  opimm::OpImmInstruction,
 };
 use super::hart::Hart;
 
@@ -42,7 +43,12 @@ pub enum OpcodeExecResult {
 }
 
 impl Opcode {
-  pub fn exec(&self, inst: u32, hart: &mut Hart) -> OpcodeExecResult {
+  pub fn exec(
+    &self,
+    inst: u32,
+    hart: &mut Hart,
+    bus: &mut Bus,
+  ) -> OpcodeExecResult {
     let rd = rd!(inst);
     let rs1 = rs1!(inst);
     let rs2 = rs2!(inst);
@@ -98,7 +104,16 @@ impl Opcode {
           }
         }
       },
-      Opcode::Load => todo!(),
+      Opcode::Load => match LoadInstruction::try_from(inst) {
+        Err(_) => OpcodeExecResult::Fail,
+        Ok(load_inst) => match bus.read(rs1v_u + immi_u, load_inst.into()) {
+          Err(_) => OpcodeExecResult::Fail,
+          Ok(data) => {
+            hart.reg_write(rd, Wrapping(load_inst.conv_loaded_data(data)));
+            OpcodeExecResult::Normal
+          }
+        },
+      },
       Opcode::Store => todo!(),
       Opcode::MiscMem => todo!(),
       Opcode::System => todo!(),
