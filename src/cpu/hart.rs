@@ -10,6 +10,7 @@ use super::{
 pub struct Hart {
   regfile: [Wrapping<u64>; 32], // Access through reg_read & reg_write
   pub pc: Wrapping<u64>,
+  pub cycle: usize,
 }
 
 impl Hart {
@@ -17,6 +18,7 @@ impl Hart {
     Hart {
       regfile: [Wrapping(0u64); 32],
       pc: Wrapping(0u64),
+      cycle: 0,
     }
   }
 
@@ -41,6 +43,10 @@ impl Hart {
     let opcode: Opcode = (inst & 0b1111111).try_into()?;
 
     let next_pc = match opcode.exec(inst, self, bus) {
+      OpcodeExecResult::DecodeFail => {
+        eprintln!("Instruction decode failure: {inst:x}");
+        return Err(());
+      }
       OpcodeExecResult::Fail => return Err(()),
       OpcodeExecResult::Normal => self.next_pc(),
       OpcodeExecResult::RelPC(rel_pc) => self.pc + rel_pc,
@@ -50,10 +56,20 @@ impl Hart {
     // TODO: Check is next_pc is 4 byte aligned
     self.pc = next_pc;
 
+    self.cycle += 1;
+
     CycleResult::Ok(())
   }
 
   pub fn next_pc(&self) -> Wrapping<u64> {
     self.pc + Wrapping(4)
+  }
+
+  pub fn print_state(&self) {
+    (0..32).for_each(|regn| {
+      eprintln!("\tx{regn}: {regv}", regv = self.reg_read(regn).0)
+    });
+    eprintln!("\txPC: {pc:x}", pc = self.pc.0);
+    eprintln!("\tCycle: {cycle}", cycle = self.cycle);
   }
 }
