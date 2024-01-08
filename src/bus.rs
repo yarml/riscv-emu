@@ -27,7 +27,8 @@ impl Bus {
     Self { devs: Vec::new() }
   }
 
-  pub fn attach_dev(&mut self, dev: Box<dyn Device>) {
+  // Attaches device and returns the address it was attached to
+  pub fn attach_dev(&mut self, dev: Box<dyn Device>) -> u64 {
     let stat = dev.stat();
     let target_adr = {
       let highest_adr = self
@@ -50,6 +51,7 @@ impl Bus {
       adr_end: target_adr + Wrapping(stat.len),
       dev,
     });
+    target_adr.0
   }
 
   fn find_dev_in_range(
@@ -65,7 +67,7 @@ impl Bus {
     }
     let target_dev = target_dev.unwrap();
 
-    let offset = target_dev.adr_start - address;
+    let offset = address - target_dev.adr_start;
     Some((offset, target_dev))
   }
 
