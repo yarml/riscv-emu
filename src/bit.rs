@@ -107,7 +107,7 @@ macro_rules! rep_word {
 #[macro_export]
 macro_rules! check_alignment {
   ($e:expr, $alignment:expr) => {
-    $e % $alignment != 0
+    $e % $alignment == 0
   };
 }
 

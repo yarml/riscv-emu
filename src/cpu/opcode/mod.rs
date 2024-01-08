@@ -1,13 +1,13 @@
-mod branch;
-mod common;
-mod load;
-mod misc_mem;
-mod op;
-mod op32;
-mod opimm;
-mod opimm32;
-mod store;
-mod system;
+pub mod branch;
+pub mod common;
+pub mod load;
+pub mod misc_mem;
+pub mod op;
+pub mod op32;
+pub mod opimm;
+pub mod opimm32;
+pub mod store;
+pub mod system;
 
 use std::num::Wrapping;
 
@@ -40,6 +40,7 @@ pub enum Opcode {
 }
 
 pub enum OpcodeExecResult {
+  DecodeFail,
   Fail, // Maybe add more detail here, idk
   Normal,
   RelPC(Wrapping<u64>),
@@ -65,10 +66,9 @@ impl Opcode {
     let immj_u = Wrapping(imm_j!(inst));
     let immb_u = Wrapping(imm_b!(inst));
     let imms_u = Wrapping(imm_s!(inst));
-
     match self {
       Self::OpImm => match OpImmInstruction::try_from(inst) {
-        Err(_) => OpcodeExecResult::Fail,
+        Err(_) => OpcodeExecResult::DecodeFail,
         Ok(opimm_inst) => {
           let result = opimm_inst.calc(immi_u, rs1v_u);
           hart.reg_write(rd, result);
@@ -76,7 +76,7 @@ impl Opcode {
         }
       },
       Self::OpImm32 => match OpImm32Instruction::try_from(inst) {
-        Err(_) => OpcodeExecResult::Fail,
+        Err(_) => OpcodeExecResult::DecodeFail,
         Ok(opimm32_inst) => {
           let result = opimm32_inst.calc(immi_u, rs1v_u);
           hart.reg_write(rd, result);
@@ -84,7 +84,7 @@ impl Opcode {
         }
       },
       Self::Op => match OpInstruction::try_from(inst) {
-        Err(_) => OpcodeExecResult::Fail,
+        Err(_) => OpcodeExecResult::DecodeFail,
         Ok(op_inst) => {
           let result = op_inst.calc(rs1v_u, rs2v_u);
           hart.reg_write(rd, result);
@@ -92,7 +92,7 @@ impl Opcode {
         }
       },
       Self::Op32 => match Op32Instruction::try_from(inst) {
-        Err(_) => OpcodeExecResult::Fail,
+        Err(_) => OpcodeExecResult::DecodeFail,
         Ok(op32_inst) => {
           let result = op32_inst.calc(rs1v_u, rs2v_u);
           hart.reg_write(rd, result);
@@ -116,7 +116,7 @@ impl Opcode {
         OpcodeExecResult::AbsPC(rs1v_u + immi_u)
       }
       Self::Branch => match BranchInstruction::try_from(inst) {
-        Err(_) => OpcodeExecResult::Fail,
+        Err(_) => OpcodeExecResult::DecodeFail,
         Ok(branch_inst) => {
           if branch_inst.check(rs1v_u.0, rs2v_u.0) {
             OpcodeExecResult::RelPC(immb_u)
@@ -126,7 +126,7 @@ impl Opcode {
         }
       },
       Self::Load => match LoadInstruction::try_from(inst) {
-        Err(_) => OpcodeExecResult::Fail,
+        Err(_) => OpcodeExecResult::DecodeFail,
         Ok(load_inst) => match bus.read(rs1v_u + immi_u, load_inst.into()) {
           Err(_) => OpcodeExecResult::Fail,
           Ok(data) => {
@@ -136,7 +136,7 @@ impl Opcode {
         },
       },
       Self::Store => match StoreInstruction::try_from(inst) {
-        Err(_) => OpcodeExecResult::Fail,
+        Err(_) => OpcodeExecResult::DecodeFail,
         Ok(store_inst) => {
           match bus.write(imms_u + rs1v_u, store_inst.into_write_mode(rs2v_u.0))
           {
@@ -146,15 +146,19 @@ impl Opcode {
         }
       },
       Self::MiscMem => match MiscMemInstruction::try_from(inst) {
-        Err(_) => OpcodeExecResult::Fail,
+        Err(_) => OpcodeExecResult::DecodeFail,
         Ok(misc_mem_inst) => {
           misc_mem_inst.exec();
           OpcodeExecResult::Normal
         }
       },
       Self::System => match SystemInstruction::try_from(inst) {
-        Err(_) => OpcodeExecResult::Fail,
+        Err(_) => OpcodeExecResult::DecodeFail,
         Ok(sys_inst) => {
+          // Currently SYSTEM opcode is not implemented
+          // So I am using this to print hart debug info
+          hart.print_state();
+
           sys_inst.exec();
           OpcodeExecResult::Normal
         }
@@ -208,7 +212,7 @@ impl TryFrom<u32> for Opcode {
   fn try_from(opcode: u32) -> Result<Self, Self::Error> {
     let opcode_0_1 = opcode & 0b11;
     let opcode_2_4 = (opcode & 0b11100) >> 2;
-    let opcode_5_6 = (opcode & 0x1100000) >> 5;
+    let opcode_5_6 = (opcode & 0b1100000) >> 5;
 
     if opcode_0_1 != 0b11 {
       return Err(());

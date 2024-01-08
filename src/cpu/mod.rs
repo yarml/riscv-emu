@@ -1,6 +1,6 @@
-mod cycle;
-mod hart;
-mod opcode;
+pub mod cycle;
+pub mod hart;
+pub mod opcode;
 
 use self::hart::Hart;
 use crate::bus::Bus;
@@ -25,8 +25,15 @@ impl CPU {
   }
 
   pub fn cycle(&mut self) {
-    self.harts.iter_mut().for_each(|hart| {
-      let _ = hart.cycle(&mut self.bus);
-    });
+    self
+      .harts
+      .iter_mut()
+      .for_each(|hart| match hart.cycle(&mut self.bus) {
+        Err(_) => {
+          hart.print_state();
+          panic!("Hart failed to cycle");
+        }
+        _ => {}
+      });
   }
 }

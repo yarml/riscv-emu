@@ -5,13 +5,13 @@ use dev::{ReadMode, WriteMode};
 use ram::RAM;
 use rom::ROM;
 
-mod bit;
-mod bus;
-mod cpu;
-mod dev;
-mod ram;
-mod rom;
-mod units;
+pub mod bit;
+pub mod bus;
+pub mod cpu;
+pub mod dev;
+pub mod ram;
+pub mod rom;
+pub mod units;
 
 pub fn shutup_unused() -> Result<(), ()> {
   let ram = RAM::new(16 * 1024 * 1024);
